@@ -5,10 +5,10 @@ using System.Collections.Generic;
 
 public class kwakTarget : TargetRules
 {
-	public kwakTarget(TargetInfo Target) : base(Target)
+	public kwakTarget( TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Game;
 		DefaultBuildSettings = BuildSettingsVersion.V2;
-		ExtraModuleNames.Add("kwak");
+		ExtraModuleNames.AddRange( new string[] { "kwak" } );
 	}
 }

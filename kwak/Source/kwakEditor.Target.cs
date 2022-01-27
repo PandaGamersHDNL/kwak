@@ -5,10 +5,10 @@ using System.Collections.Generic;
 
 public class kwakEditorTarget : TargetRules
 {
-	public kwakEditorTarget(TargetInfo Target) : base(Target)
+	public kwakEditorTarget( TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Editor;
 		DefaultBuildSettings = BuildSettingsVersion.V2;
-		ExtraModuleNames.Add("kwak");
+		ExtraModuleNames.AddRange( new string[] { "kwak" } );
 	}
 }
