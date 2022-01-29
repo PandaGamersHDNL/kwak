@@ -27,16 +27,20 @@ void AKwakCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputCompo
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+    //movement
     PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
     PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
-    // Bind movement events
     PlayerInputComponent->BindAxis("MoveForward", this, &AKwakCharacter::MoveForward);
     PlayerInputComponent->BindAxis("MoveRight", this, &AKwakCharacter::MoveRight);
 
     PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
     PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
     PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+
+    // 
+    PlayerInputComponent->BindAction("Shoot", IE_Pressed, this,
+                                     &AKwakCharacter::Shoot);
 }
 
 void AKwakCharacter::MoveForward(float Value)
