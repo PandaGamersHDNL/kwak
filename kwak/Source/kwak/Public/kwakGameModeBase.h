@@ -7,11 +7,14 @@
 #include "kwakGameModeBase.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
 class KWAK_API AkwakGameModeBase : public AGameModeBase
 {
-	GENERATED_BODY()
-	
+    GENERATED_BODY()
+
+  public:
+    UFUNCTION(BlueprintCallable)
+    void OnPlayerKilled(class AKwakCharacter *PlayerPawn);
 };

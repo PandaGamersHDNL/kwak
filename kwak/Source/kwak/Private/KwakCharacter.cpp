@@ -2,18 +2,53 @@
 
 #include "KwakCharacter.h"
 
+#include "Camera/CameraComponent.h"
+#include "Components/CapsuleComponent.h"
+//#include "NiagaraFunctionLibrary.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "kwakGameModeBase.h"
+// #include "NiagaraSystem.h"
+
 // Sets default values
 AKwakCharacter::AKwakCharacter()
 {
     // Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need
     // it.
-    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bCanEverTick = false;
+    // Create a CameraComponent
+    FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
+    FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
+    FirstPersonCameraComponent->SetRelativeLocation(FVector(0, 0, 0)); // Position the camera
+    FirstPersonCameraComponent->bUsePawnControlRotation = true;
+
+    /* ConstructorHelpers::FObjectFinder<UNiagaraSystem> guntrailObject(
+        TEXT("NiagaraSystem'/Game/GunTrail_NS.GunTrail_NS'"));
+    if (guntrailObject.Succeeded()) {
+    GunTrailSystem = guntrailObject.Object;
+    } else {
+      UE_LOG(LogTemp, Warning, TEXT("could not create gun trail system"));
+    }*/
+}
+
+// set relication
+void AKwakCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(AKwakCharacter, StartShot);
+    DOREPLIFETIME(AKwakCharacter, EndShot);
+    DOREPLIFETIME(AKwakCharacter, ShootDistance);
+    // DOREPLIFETIME(AKwakCharacter, GunTrailSystem);
 }
 
 // Called when the game starts or when spawned
 void AKwakCharacter::BeginPlay()
 {
     Super::BeginPlay();
+    UE_LOG(LogTemp, Warning, TEXT("shooting distance %i"), ShootDistance);
 }
 
 // Called every frame
@@ -27,7 +62,7 @@ void AKwakCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputCompo
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-    //movement
+    // movement
     PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
     PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
@@ -38,9 +73,8 @@ void AKwakCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputCompo
     PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
     PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 
-    // 
-    PlayerInputComponent->BindAction("Shoot", IE_Pressed, this,
-                                     &AKwakCharacter::Shoot);
+    //
+    PlayerInputComponent->BindAction("Shoot", IE_Pressed, this, &AKwakCharacter::Shoot);
 }
 
 void AKwakCharacter::MoveForward(float Value)
@@ -58,4 +92,65 @@ void AKwakCharacter::MoveRight(float Value)
         // add movement in that direction
         AddMovementInput(GetActorRightVector(), Value);
     }
+}
+
+void AKwakCharacter::Shoot_Implementation()
+{
+    ShootOnServer();
+}
+
+void AKwakCharacter::ShootOnServer_Implementation()
+{
+    this->StartShot = GetActorLocation();
+    this->EndShot = this->StartShot + (FirstPersonCameraComponent->GetForwardVector() * ShootDistance);
+    FHitResult hit;
+    FCollisionQueryParams LinetraceParams;
+    LinetraceParams.AddIgnoredActor(this);
+    if (GetWorld()->LineTraceSingleByChannel(hit, StartShot, EndShot, ECollisionChannel::ECC_Visibility,
+                                             LinetraceParams))
+    {
+        EndShot = hit.ImpactPoint;
+        UE_LOG(LogTemp, Warning, TEXT("%s"), *hit.Actor->GetName());
+
+        auto character = Cast<AKwakCharacter>(hit.Actor);
+        if (character)
+        {
+            character->KillSelf();
+        }
+    }
+    UE_LOG(LogTemp, Warning, TEXT("Shoot trail"));
+    ShootTrails();
+}
+
+// guntrailsystem not defined Temp fix -> bp
+/* void AKwakCharacter::ShootTrails_Implementation() {
+
+    if (GunTrailSystem)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("No gun trail system set"));
+        return;
+    }
+    auto system = UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), GunTrailSystem, StartShot, FRotator(),
+                                                                 FVector(), true, true, ENCPoolMethod::None, true);
+    system->SetVectorParameter("beamEnd", EndShot);
+}*/
+
+void AKwakCharacter::KillSelf_Implementation()
+{
+    UE_LOG(LogTemp, Warning, TEXT("kill self"));
+    // set the client's camera (client)
+    KillHitbox();
+
+    // do after x seconds
+    auto gamemode = Cast<AkwakGameModeBase>(UGameplayStatics::GetGameMode(GetWorld()));
+    gamemode->OnPlayerKilled(this);
+    // this->Destroy(); //TODO add this after delay is added
+}
+
+void AKwakCharacter::KillHitbox_Implementation()
+{
+    GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    GetMesh()->SetSimulatePhysics(true);
+    GetMesh()->SetCollisionProfileName("Ragdoll");
+    GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
 }

@@ -3,4 +3,4 @@
 #include "kwak.h"
 #include "Modules/ModuleManager.h"
 
-IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, kwak, "kwak" );
+IMPLEMENT_PRIMARY_GAME_MODULE(FDefaultGameModuleImpl, kwak, "kwak");
