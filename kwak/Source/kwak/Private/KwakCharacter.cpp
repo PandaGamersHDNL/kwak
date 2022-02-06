@@ -4,12 +4,15 @@
 
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
-//#include "NiagaraFunctionLibrary.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
+#include "KwakPlayerState.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "kwakGameModeBase.h"
+#include "kwakGameState.h"
+
 // #include "NiagaraSystem.h"
 
 // Sets default values
@@ -48,7 +51,7 @@ void AKwakCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLi
 void AKwakCharacter::BeginPlay()
 {
     Super::BeginPlay();
-    UE_LOG(LogTemp, Warning, TEXT("shooting distance %i"), ShootDistance);
+    // UE_LOG(LogTemp, Warning, TEXT("shooting distance %i"), ShootDistance);
 }
 
 // Called every frame
@@ -71,10 +74,10 @@ void AKwakCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputCompo
 
     PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
     PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
-    PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 
-    //
+    // actions
     PlayerInputComponent->BindAction("Shoot", IE_Pressed, this, &AKwakCharacter::Shoot);
+    // dash/ leap?
 }
 
 void AKwakCharacter::MoveForward(float Value)
@@ -102,7 +105,7 @@ void AKwakCharacter::Shoot_Implementation()
 void AKwakCharacter::ShootOnServer_Implementation()
 {
     this->StartShot = GetActorLocation();
-    this->EndShot = this->StartShot + (FirstPersonCameraComponent->GetForwardVector() * ShootDistance);
+    this->EndShot = this->StartShot + (GetControlRotation().Vector() * ShootDistance);
     FHitResult hit;
     FCollisionQueryParams LinetraceParams;
     LinetraceParams.AddIgnoredActor(this);
@@ -115,10 +118,25 @@ void AKwakCharacter::ShootOnServer_Implementation()
         auto character = Cast<AKwakCharacter>(hit.Actor);
         if (character)
         {
+            auto state = APawn::GetPlayerState();
+            state->SetScore(state->GetScore() + 1);
             character->KillSelf();
+            auto gamemodeBase = GetWorld()->GetAuthGameMode();
+            if (gamemodeBase)
+            {
+                auto gamemode = Cast<AkwakGameModeBase>(gamemodeBase);
+                if (gamemode->WinKills <= state->GetScore())
+                {
+                    gamemode->EndMatch();
+                }
+            }
+            else
+            {
+                UE_LOG(LogTemp, Warning, TEXT("not server for gamemode"));
+            }
         }
     }
-    UE_LOG(LogTemp, Warning, TEXT("Shoot trail"));
+    // UE_LOG(LogTemp, Warning, TEXT("Shoot trail"));
     ShootTrails();
 }
 
@@ -137,6 +155,8 @@ void AKwakCharacter::ShootOnServer_Implementation()
 
 void AKwakCharacter::KillSelf_Implementation()
 {
+    // TODO
+    Cast<AKwakPlayerState>(GetPlayerState())->Deaths++;
     UE_LOG(LogTemp, Warning, TEXT("kill self"));
     // set the client's camera (client)
     KillHitbox();

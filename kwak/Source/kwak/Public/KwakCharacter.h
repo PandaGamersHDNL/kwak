@@ -5,9 +5,9 @@
 //#include "Net/UnrealNetwork.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "KwakCharacter.generated.h"
 #include "Net/UnrealNetwork.h"
-
+// has to be last
+#include "KwakCharacter.generated.h"
 class UCameraComponent;
 
 UCLASS()
